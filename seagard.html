@@ -1,0 +1,1758 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8" />
+<title>SeaGuard Lebanon – Coastal Trash Hotspots</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="authors" content="Andrew Samaha &Yara Sleem " />
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <style>
+    :root {
+      --primary: #0077b6;
+      --primary-soft: #e0f4ff;
+      --accent-high: #e53935;
+      --accent-med: #ffb300;
+      --accent-low: #fdd835;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --text: #14213d;
+      --muted: #6b7280;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+
+    header.app-header {
+      flex-shrink: 0;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+    }
+
+    .app-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .app-title-main {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.03em;
+    }
+
+    .app-title-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .chip {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .btn-small {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .btn-small span.icon {
+      font-size: 0.9rem;
+    }
+
+    main.app-main {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .map-overlay-top {
+      position: absolute;
+      top: 0.6rem;
+      left: 0.6rem;
+      right: 0.6rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-lg);
+      padding: 0.55rem 0.7rem;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.15);
+      pointer-events: auto;
+    }
+
+    .primary-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      border-radius: 999px;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.78rem;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: var(--primary);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .btn-primary span.icon,
+    .btn-secondary span.icon {
+      font-size: 0.95rem;
+    }
+
+    .legend-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 150px;
+    }
+
+    .legend-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.2rem;
+      font-size: 0.72rem;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-right: 0.3rem;
+    }
+
+    .legend-label {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Bottom sheet */
+
+    .bottom-sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transform: translateY(100%);
+      transition: transform 0.28s ease-out;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .bottom-sheet.open {
+      transform: translateY(0%);
+      pointer-events: auto;
+    }
+
+    .bottom-sheet-inner {
+      background: rgba(248, 250, 252, 0.98);
+      backdrop-filter: blur(10px);
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.25);
+      max-height: 60vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sheet-header {
+      padding: 0.4rem 1rem 0.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sheet-drag-handle {
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5f5;
+      margin: 0.3rem auto 0.45rem;
+    }
+
+    .sheet-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .sheet-subtitle {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.05rem;
+    }
+
+    .sheet-close-btn {
+      border: none;
+      background: transparent;
+      font-size: 1.1rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .sheet-body {
+      padding: 0.4rem 1rem 0.8rem;
+      overflow-y: auto;
+    }
+
+    .hotspot-pill {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-weight: 500;
+      margin-right: 0.25rem;
+    }
+
+    .pill-high {
+      background: rgba(229, 57, 53, 0.09);
+      color: #b71c1c;
+    }
+
+    .pill-med {
+      background: rgba(255, 179, 0, 0.12);
+      color: #92400e;
+    }
+
+    .pill-low {
+      background: rgba(253, 216, 53, 0.12);
+      color: #854d0e;
+    }
+
+    .pill-source {
+      background: rgba(148, 163, 184, 0.2);
+      color: #4b5563;
+    }
+
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      margin-top: 0.3rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .info-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .info-value {
+      font-size: 0.8rem;
+    }
+
+    .info-mono {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.75rem;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .btn-ghost {
+      border-radius: 999px;
+      padding: 0.45rem 0.8rem;
+      border: 1px solid #d1d5db;
+      font-size: 0.78rem;
+      background: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* Lists */
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .list-item {
+      padding: 0.5rem 0.55rem;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: #ffffff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .list-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .list-item-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .list-item-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      border-radius: 999px;
+      font-size: 0.7rem;
+      padding: 0.12rem 0.45rem;
+      border: none;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .badge-outline {
+      background: transparent;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: var(--muted);
+    }
+
+    /* Forms */
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+    }
+
+    label {
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .field {
+      margin-top: 0.1rem;
+    }
+
+    input[type="text"],
+    input[type="datetime-local"],
+    select,
+    textarea {
+      width: 100%;
+      border-radius: 0.75rem;
+      border: 1px solid #d1d5db;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.8rem;
+      font-family: inherit;
+      outline: none;
+      background: #ffffff;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .btn-submit {
+      margin-top: 0.4rem;
+      border-radius: 999px;
+      padding: 0.55rem 0.9rem;
+      border: none;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .helper-text {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .empty-state {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 0.3rem 0;
+    }
+
+    /* Profile chips */
+
+    .profile-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.45rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .profile-chip {
+      padding: 0.35rem 0.55rem;
+      border-radius: 0.75rem;
+      background: #ffffff;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 0.75rem;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .profile-chip-label {
+      color: var(--muted);
+      font-size: 0.7rem;
+    }
+
+    .profile-chip-value {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    
+    /* For the new OCR/Recycling Guide feature */
+    .recycling-guide {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.8rem;
+      font-size: 0.75rem;
+      margin-top: 0.4rem;
+    }
+    
+    @media (min-width: 480px) {
+      .recycling-guide {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .guide-section ul {
+      list-style-type: none;
+      padding-left: 0;
+      margin: 0.2rem 0 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .guide-title {
+      font-size: 0.8rem;
+      margin: 0;
+      font-weight: 600;
+    }
+    .guide-title.green { color: #2e7d32; }
+    .guide-title.red { color: #c62828; }
+
+    #ocr-result .ocr-overlay {
+      border: 2px solid white;
+      border-radius: 8px;
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    #ocr-result .ocr-label {
+      background: rgba(0,0,0,0.6);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+    }
+    .green-overlay { background: rgba(76, 175, 80, 0.45); }
+    .red-overlay { background: rgba(229, 57, 53, 0.45); }
+    
+    /* RTL (Arabic) Styles */
+    [dir="rtl"] {
+      text-align: right;
+    }
+    [dir="rtl"] .app-header {
+      flex-direction: row-reverse;
+    }
+    [dir="rtl"] .app-title {
+      align-items: flex-end;
+    }
+    [dir="rtl"] .header-actions {
+      flex-direction: row-reverse;
+    }
+    [dir="rtl"] .map-overlay-top {
+      flex-direction: row-reverse;
+    }
+    [dir="rtl"] .primary-actions {
+      justify-content: flex-end;
+    }
+    [dir="rtl"] .legend-dot {
+      margin-right: 0;
+      margin-left: 0.3rem;
+    }
+    [dir="rtl"] .sheet-header {
+      flex-direction: row-reverse;
+    }
+    [dir="rtl"] .sheet-header > div {
+       text-align: right;
+    }
+    [dir="rtl"] .hotspot-pill, [dir="rtl"] .badge {
+      margin-right: 0;
+      margin-left: 0.25rem;
+    }
+    [dir="rtl"] .list-item-header {
+      flex-direction: row-reverse;
+    }
+    [dir="rtl"] .btn-row {
+      justify-content: flex-start;
+      flex-direction: row-reverse;
+    }
+    [dir="rtl"] .btn-row .badge {
+      margin-right: auto;
+      margin-left: 0;
+    }
+
+
+    /* Responsive tweaks */
+    @media (min-width: 768px) {
+      .map-overlay-top {
+        max-width: 900px;
+        margin: 0 auto;
+        left: 1.2rem;
+        right: 1.2rem;
+      }
+
+      .bottom-sheet-inner {
+        max-width: 700px;
+        margin: 0 auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="app-title">
+        <div class="app-title-main" data-translate-key="appTitleMain">SeaGuard Lebanon</div>
+        <div class="app-title-sub" data-translate-key="appTitleSub">
+          Map, hotspots & cleanups to protect our coast.
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="chip" data-translate-key="chipBeta">Beta – Local Coastal Tool</div>
+        <button id="locate-btn" class="btn-small" type="button">
+          <span class="icon">📍</span>
+          <span data-translate-key="btnUseMyLocation">Use my location</span>
+        </button>
+        <button id="profile-btn" class="btn-small" type="button">
+          <span class="icon">👤</span>
+          <span data-translate-key="btnProfile">Profile</span>
+        </button>
+        <button id="lang-switch-btn" class="btn-small" type="button">عربي</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div id="map"></div>
+
+      <div class="map-overlay-top">
+        <div class="card">
+          <div class="primary-actions">
+            <button id="btn-hotspots" class="btn-primary" type="button">
+              <span class="icon">🔥</span>
+              <span data-translate-key="btnSeeHotspots">See hotspots</span>
+            </button>
+            <button id="btn-plan" class="btn-secondary" type="button">
+              <span class="icon">🧹</span>
+              <span data-translate-key="btnPlanCleanup">Plan a cleanup</span>
+            </button>
+            <button id="btn-report" class="btn-secondary" type="button">
+              <span class="icon">📷</span>
+              <span data-translate-key="btnReportTrash">Report trash</span>
+            </button>
+            <button id="btn-scan" class="btn-secondary" type="button">
+              <span class="icon">♻️</span>
+              <span data-translate-key="btnScanItem">Scan Item</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card legend-card">
+          <div class="legend-title" data-translate-key="legendTrashRisk">Trash risk</div>
+          <div class="legend-row">
+            <div class="legend-label">
+              <div
+                class="legend-dot"
+                style="background: var(--accent-high); box-shadow: 0 0 10px rgba(229,57,53,0.7);"
+              ></div>
+              <span data-translate-key="legendHigh">High</span>
+            </div>
+            <div class="legend-label">
+              <div class="legend-dot" style="background: var(--accent-med);"></div>
+              <span data-translate-key="legendMedium">Medium</span>
+            </div>
+            <div class="legend-label">
+              <div class="legend-dot" style="background: var(--accent-low);"></div>
+              <span data-translate-key="legendLow">Low</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom sheet -->
+      <div id="bottom-sheet" class="bottom-sheet">
+        <div class="bottom-sheet-inner">
+          <div class="sheet-drag-handle"></div>
+          <div class="sheet-header">
+            <div>
+              <div id="sheet-title" class="sheet-title"></div>
+              <div id="sheet-subtitle" class="sheet-subtitle"></div>
+            </div>
+            <button id="sheet-close" class="sheet-close-btn" type="button">
+              ✕
+            </button>
+          </div>
+          <div id="sheet-body" class="sheet-body"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <script>
+    // --------- Translations ---------
+    const translations = {
+      en: {
+        // Header
+        appTitleMain: "SeaGuard Lebanon",
+        appTitleSub: "Map, hotspots & cleanups to protect our coast.",
+        chipBeta: "Beta – Local Coastal Tool",
+        btnUseMyLocation: "Use my location",
+        btnProfile: "Profile",
+        langSwitch: "عربي",
+        
+        // Primary Actions
+        btnSeeHotspots: "See hotspots",
+        btnPlanCleanup: "Plan a cleanup",
+        btnReportTrash: "Report trash",
+        btnScanItem: "Scan Item",
+        
+        // Legend
+        legendTrashRisk: "Trash risk",
+        legendHigh: "High",
+        legendMedium: "Medium",
+        legendLow: "Low",
+        
+        // Hotspot Details Sheet
+        hotspotSheetSubtitle: "Trash hotspot · Nearshore Lebanon",
+        hotspotPillRisk: "Risk",
+        hotspotPillScore: "Score",
+        infoLabelDescription: "Description",
+        infoLabelCoordinates: "Exact coordinates",
+        infoLabelAccess: "Suggested access point",
+        infoLabelUpdated: "Updated",
+        btnPlanCleanupHere: "Plan a cleanup here",
+        btnReportTrashHere: "Report trash at this spot",
+        distanceAway: "You are ~{distance} away",
+        
+        // Top Hotspots Sheet
+        hotspotsSheetTitle: "Top hotspots",
+        hotspotsSheetSubtitle: "Where trash is most likely to accumulate",
+        hotspotsListDistance: "~{distance} away",
+        hotspotsHelperText: "Tap a hotspot to center the map and see full details. This is a mock dataset – in production, scores will come from a trash prediction engine + real reports.",
+        
+        // Cleanup Form
+        cleanupFormTitle: "Plan a cleanup",
+        cleanupFormSubtitle: "Turn a hotspot into real action",
+        cleanupFormHotspotLabel: "Cleanup hotspot",
+        cleanupFormTitleLabel: "Cleanup title",
+        cleanupFormTitlePlaceholder: "Example: Ramlet el Bayda – Saturday Morning Sweep",
+        cleanupFormDateTimeLabel: "Date & time",
+        cleanupFormMeetingLabel: "Meeting point (on land)",
+        cleanupFormMeetingPlaceholder: "Example: In front of the public beach entrance",
+        cleanupFormNotesLabel: "Notes (optional)",
+        cleanupFormNotesPlaceholder: "What to bring, how to recognize the group, etc.",
+        btnCreateCleanup: "Create cleanup",
+        cleanupFormHelper: "Created cleanups stay only on this device (local demo). In a real version, this would generate a shareable link for WhatsApp, Instagram, etc.",
+        
+        // Cleanup List
+        cleanupListTitle: "Your cleanups",
+        cleanupListSubtitle: "Upcoming & saved cleanups",
+        cleanupListSubtitleNew: "Cleanup created – share it with friends!",
+        cleanupListEmpty: "No cleanups yet on this device. Plan one from a hotspot or with the “Plan a cleanup” button.",
+        cleanupListHelper: "Tap a cleanup to fly to its hotspot on the map. These events are stored locally only.",
+        cleanupListItemBadge: "Hotspot",
+        
+        // Report Form
+        reportFormTitle: "Report trash",
+        reportFormSubtitle: "Help us update the map in real time",
+        reportFormForHotspot: "Reporting for hotspot",
+        reportFormTypeLabel: "Trash type",
+        reportFormTypePlastic: "Plastic",
+        reportFormTypeGear: "Fishing gear",
+        reportFormTypeOil: "Oil / hydrocarbons",
+        reportFormTypeMixed: "Mixed / other",
+        reportFormSeverityLabel: "Severity",
+        reportFormLocationLabel: "Location",
+        reportFormLocationHelper: "We will use your last known GPS position if available. You can override it here if needed.",
+        btnSubmitReport: "Submit report",
+        reportFormHelper: "This demo does not upload photos, but in a real app you could attach 1–3 photos here. Reports would slightly increase the trash score in this area to improve the heatmap.",
+        
+        // Report List
+        reportListTitle: "Your reports",
+        reportListSubtitle: "Crowdsourced observations",
+        reportListSubtitleNew: "Thank you – your report has been recorded.",
+        reportListEmpty: "No reports yet on this device. Use “Report trash” when you see floating trash or polluted water.",
+        reportListHelper: "In a full version, anonymous + privacy-safe reports like these would feed back into the trash prediction model.",
+        reportListItemBadge: "Report",
+        
+        // OCR / Scanner Sheet
+        scannerTitle: "Recycling Guide & Scanner",
+        scannerSubtitle: "Identify recyclable materials",
+        scannerGuideTitle: "Quick Recycling Guide (Lebanon)",
+        scannerGuideDesc: "Here are some common items found on the coast.",
+        scannerGuideRecyclableTitle: "✅ Generally Recyclable",
+        scannerGuideRecyclableItems: `<li>Plastic bottles (PET, HDPE - water, soda, milk, shampoo)</li><li>Glass bottles & jars (all colors)</li><li>Metal cans (aluminum & steel - soda, food cans)</li><li>Clean paper & cardboard</li>`,
+        scannerGuideNonRecyclableTitle: "❌ Generally Not Recyclable",
+        scannerGuideNonRecyclableItems: `<li>Plastic bags, wrappers, and films</li><li>Styrofoam cups and containers</li><li>Soiled items (oily pizza boxes, food waste)</li><li>Bottle caps (usually too small)</li>`,
+        scannerGuideDisclaimer: "Always check with your local recycling facility for specific guidelines.",
+        scannerDemoTitle: "Scanner Demo",
+        scannerDemoDesc: "This is a demonstration. Upload any photo to see a simulated result.",
+        scannerDemoBtn: "Take or Upload Photo",
+        scannerResultRecyclable: "Plastic Bottle (Recyclable)",
+        scannerResultNotRecyclable: "Cap (Not Recyclable)",
+
+        // Profile Sheet
+        profileTitle: "Your SeaGuard impact",
+        profileSubtitle: "Small actions, big change for Lebanon’s coast",
+        profileCleanupsLabel: "Cleanups planned",
+        profileReportsLabel: "Trash reports sent",
+        profileStatusLabel: "Status",
+        profileStatusValue: "SeaGuard Friend 🌊",
+        profileHelper: "This is a simple offline profile. In a real app, you could sign in with a nickname, track how many cleanups you joined, and unlock badges for protecting Lebanon’s sea.",
+        profileBtnViewCleanups: "View your cleanups",
+        profileBtnViewReports: "View your reports",
+      },
+      ar: {
+        // Header
+        appTitleMain: "حارس البحر لبنان",
+        appTitleSub: "خريطة، نقاط ساخنة وحملات تنظيف لحماية شواطئنا.",
+        chipBeta: "نسخة تجريبية - أداة ساحلية محلية",
+        btnUseMyLocation: "استخدام موقعي",
+        btnProfile: "ملفي الشخصي",
+        langSwitch: "English",
+        
+        // Primary Actions
+        btnSeeHotspots: "عرض النقاط الساخنة",
+        btnPlanCleanup: "تخطيط حملة تنظيف",
+        btnReportTrash: "الإبلاغ عن قمامة",
+        btnScanItem: "مسح عنصر",
+        
+        // Legend
+        legendTrashRisk: "خطر القمامة",
+        legendHigh: "مرتفع",
+        legendMedium: "متوسط",
+        legendLow: "منخفض",
+        
+        // Hotspot Details Sheet
+        hotspotSheetSubtitle: "نقطة قمامة ساخنة · شاطئ لبنان",
+        hotspotPillRisk: "الخطر",
+        hotspotPillScore: "التقييم",
+        infoLabelDescription: "الوصف",
+        infoLabelCoordinates: "الإحداثيات الدقيقة",
+        infoLabelAccess: "نقطة الوصول المقترحة",
+        infoLabelUpdated: "آخر تحديث",
+        btnPlanCleanupHere: "خطط لتنظيف هنا",
+        btnReportTrashHere: "أبلغ عن قمامة في هذا المكان",
+        distanceAway: "أنت على بعد ~{distance}",
+        
+        // Top Hotspots Sheet
+        hotspotsSheetTitle: "أبرز النقاط الساخنة",
+        hotspotsSheetSubtitle: "حيث من المرجح أن تتراكم القمامة",
+        hotspotsListDistance: "على بعد ~{distance}",
+        hotspotsHelperText: "انقر على نقطة ساخنة لتوسيط الخريطة ورؤية التفاصيل الكاملة. هذه مجموعة بيانات وهمية - في الإنتاج، ستأتي النتائج من محرك توقعات القمامة + تقارير حقيقية.",
+        
+        // Cleanup Form
+        cleanupFormTitle: "تخطيط حملة تنظيف",
+        cleanupFormSubtitle: "حوّل نقطة ساخنة إلى عمل حقيقي",
+        cleanupFormHotspotLabel: "نقطة التنظيف الساخنة",
+        cleanupFormTitleLabel: "عنوان الحملة",
+        cleanupFormTitlePlaceholder: "مثال: شاطئ الرملة البيضاء - حملة صباح السبت",
+        cleanupFormDateTimeLabel: "التاريخ والوقت",
+        cleanupFormMeetingLabel: "نقطة الالتقاء (على اليابسة)",
+        cleanupFormMeetingPlaceholder: "مثال: أمام مدخل الشاطئ العام",
+        cleanupFormNotesLabel: "ملاحظات (اختياري)",
+        cleanupFormNotesPlaceholder: "ماذا تحضر، كيف تتعرف على المجموعة، إلخ.",
+        btnCreateCleanup: "إنشاء الحملة",
+        cleanupFormHelper: "حملات التنظيف التي تم إنشاؤها تبقى فقط على هذا الجهاز (عرض محلي). في نسخة حقيقية، سيؤدي هذا إلى إنشاء رابط قابل للمشاركة على واتساب، إنستغرام، إلخ.",
+        
+        // Cleanup List
+        cleanupListTitle: "حملاتك",
+        cleanupListSubtitle: "الحملات القادمة والمحفوظة",
+        cleanupListSubtitleNew: "تم إنشاء الحملة - شاركها مع الأصدقاء!",
+        cleanupListEmpty: "لا توجد حملات تنظيف بعد على هذا الجهاز. خطط لواحدة من نقطة ساخنة أو باستخدام زر 'تخطيط حملة تنظيف'.",
+        cleanupListHelper: "انقر على حملة للانتقال إلى موقعها على الخريطة. هذه الأحداث مخزنة محليًا فقط.",
+        cleanupListItemBadge: "نقطة ساخنة",
+        
+        // Report Form
+        reportFormTitle: "الإبلاغ عن قمامة",
+        reportFormSubtitle: "ساعدنا في تحديث الخريطة في الوقت الفعلي",
+        reportFormForHotspot: "الإبلاغ عن نقطة ساخنة",
+        reportFormTypeLabel: "نوع القمامة",
+        reportFormTypePlastic: "بلاستيك",
+        reportFormTypeGear: "معدات صيد",
+        reportFormTypeOil: "زيوت / هيدروكربونات",
+        reportFormTypeMixed: "مختلط / أخرى",
+        reportFormSeverityLabel: "الخطورة",
+        reportFormLocationLabel: "الموقع",
+        reportFormLocationHelper: "سوف نستخدم آخر موقع GPS معروف لك إذا كان متاحًا. يمكنك تغييره هنا إذا لزم الأمر.",
+        btnSubmitReport: "إرسال البلاغ",
+        reportFormHelper: "هذا العرض التوضيحي لا يسمح بتحميل الصور، ولكن في تطبيق حقيقي يمكنك إرفاق 1-3 صور هنا. ستؤدي التقارير إلى زيادة طفيفة في درجة القمامة في هذه المنطقة لتحسين الخريطة الحرارية.",
+        
+        // Report List
+        reportListTitle: "بلاغاتك",
+        reportListSubtitle: "ملاحظات من المجتمع",
+        reportListSubtitleNew: "شكرًا لك - تم تسجيل بلاغك.",
+        reportListEmpty: "لا توجد بلاغات بعد على هذا الجهاز. استخدم 'الإبلاغ عن قمامة' عندما ترى قمامة عائمة أو مياه ملوثة.",
+        reportListHelper: "في نسخة كاملة، سيتم إدخال تقارير مجهولة المصدر وآمنة للخصوصية مثل هذه في نموذج التنبؤ بالقمامة.",
+        reportListItemBadge: "بلاغ",
+
+        // OCR / Scanner Sheet
+        scannerTitle: "دليل إعادة التدوير والماسح الضوئي",
+        scannerSubtitle: "تعرف على المواد القابلة لإعادة التدوير",
+        scannerGuideTitle: "دليل سريع لإعادة التدوير (لبنان)",
+        scannerGuideDesc: "فيما يلي بعض العناصر الشائعة الموجودة على الساحل.",
+        scannerGuideRecyclableTitle: "✅ قابلة لإعادة التدوير بشكل عام",
+        scannerGuideRecyclableItems: `<li>الزجاجات البلاستيكية (PET ، HDPE - مياه ، صودا ، حليب ، شامبو)</li><li>الزجاجات والجرار (جميع الألوان)</li><li>العلب المعدنية (الألومنيوم والصلب - الصودا ، وعلب الطعام)</li><li>الورق والكرتون النظيف</li>`,
+        scannerGuideNonRecyclableTitle: "❌ غير قابلة لإعادة التدوير بشكل عام",
+        scannerGuideNonRecyclableItems: `<li>الأكياس البلاستيكية والأغلفة والأفلام</li><li>أكواب وحاويات الستايروفوم</li><li>العناصر المتسخة (علب البيتزا الزيتية ، نفايات الطعام)</li><li>أغطية الزجاجات (عادة ما تكون صغيرة جدًا)</li>`,
+        scannerGuideDisclaimer: "تحقق دائمًا من منشأة إعادة التدوير المحلية للحصول على إرشادات محددة.",
+        scannerDemoTitle: "عرض الماسح الضوئي",
+        scannerDemoDesc: "هذا عرض توضيحي. قم بتحميل أي صورة لرؤية نتيجة محاكاة.",
+        scannerDemoBtn: "التقط أو حمّل صورة",
+        scannerResultRecyclable: "زجاجة بلاستيك (قابلة للتدوير)",
+        scannerResultNotRecyclable: "غطاء (غير قابل للتدوير)",
+
+        // Profile Sheet
+        profileTitle: "تأثيرك مع حارس البحر",
+        profileSubtitle: "أفعال صغيرة، تغيير كبير لسواحل لبنان",
+        profileCleanupsLabel: "حملات تم تخطيطها",
+        profileReportsLabel: "بلاغات تم إرسالها",
+        profileStatusLabel: "الحالة",
+        profileStatusValue: "صديق حارس البحر 🌊",
+        profileHelper: "هذا ملف شخصي بسيط وغير متصل بالإنترنت. في تطبيق حقيقي، يمكنك تسجيل الدخول باسم مستعار، وتتبع عدد حملات التنظيف التي انضممت إليها، وفتح شارات لحماية بحر لبنان.",
+        profileBtnViewCleanups: "عرض حملاتك",
+        profileBtnViewReports: "عرض بلاغاتك",
+      },
+    };
+
+    let currentLang = 'en';
+
+    // --------- Mock Data ---------
+    const hotspots = [
+      {
+        id: 1,
+        name: "Akkar Offshore Shelf",
+        severity: "Medium",
+        score: 74,
+        lat: 34.78,
+        lon: 35.98,
+        description: "Debris lines forming along the continental shelf after northerly winds.",
+        access: "Small boats from Halba coastal hamlets",
+        lastUpdated: "2025-11-14 09:20",
+        source: "Model + volunteer obs",
+      },
+      {
+        id: 2,
+        name: "Batroun Point Eddy",
+        severity: "High",
+        score: 91,
+        lat: 34.30,
+        lon: 35.65,
+        description: "Persistent eddy collecting plastic near the headland east of Batroun.",
+        access: "Launch from Batroun public harbor",
+        lastUpdated: "2025-11-16 08:15",
+        source: "Volunteer reports",
+      },
+      {
+        id: 3,
+        name: "Tripoli Port Outer Breakwater",
+        severity: "Medium",
+        score: 70,
+        lat: 34.43,
+        lon: 35.83,
+        description: "Floating bottles and fishing debris trapped by the breakwater.",
+        access: "Tripoli fishing port – outer wall",
+        lastUpdated: "2025-11-12 11:05",
+        source: "Harbor authority + volunteers",
+      },
+      {
+        id: 4,
+        name: "Chekka Offshore Drift Line",
+        severity: "Low",
+        score: 58,
+        lat: 34.38,
+        lon: 35.85,
+        description: "Occasional drift line of mixed plastic after storms.",
+        access: "Chekka coast – rocky access",
+        lastUpdated: "2025-11-10 14:00",
+        source: "Model after swell event",
+      },
+      {
+        id: 5,
+        name: "Byblos Marina Funnel",
+        severity: "Medium",
+        score: 76,
+        lat: 34.12,
+        lon: 35.65,
+        description: "Accumulation near marina exits and small coves.",
+        access: "Byblos old harbor / marina",
+        lastUpdated: "2025-11-13 17:25",
+        source: "Volunteer reports",
+      },
+      {
+        id: 6,
+        name: "Jounieh Bay – North Offshore Band",
+        severity: "Medium",
+        score: 78,
+        lat: 33.982,
+        lon: 35.61,
+        description: "Trash drifting near marina exits, best reached by boat.",
+        access: "Jounieh old souk – small boat ramps",
+        lastUpdated: "2025-11-16 09:10",
+        source: "Volunteer reports",
+      },
+      {
+        id: 7,
+        name: "Ras Beirut Nearshore Line",
+        severity: "High",
+        score: 88,
+        lat: 33.902,
+        lon: 35.470,
+        description: "Floating patches close to the Corniche after onshore winds.",
+        access: "Corniche Beirut – public beach stairs",
+        lastUpdated: "2025-11-15 12:40",
+        source: "Community reports",
+      },
+      {
+        id: 8,
+        name: "Ramlet el Bayda Offshore Patch",
+        severity: "High",
+        score: 95,
+        lat: 33.873,
+        lon: 35.460,
+        description: "Floating plastic ~500m off the coast after north winds.",
+        access: "Launch from Ramlet el Bayda public beach",
+        lastUpdated: "2025-11-15 10:30",
+        source: "Model + volunteer reports",
+      },
+      {
+        id: 9,
+        name: "Palm Islands – Nearshore Sink",
+        severity: "High",
+        score: 89,
+        lat: 34.23,
+        lon: 35.54,
+        description: "Islands create localized circulation trapping debris nearshore.",
+        access: "Authorized access via boat from Tripoli / Mina",
+        lastUpdated: "2025-11-11 15:00",
+        source: "Conservation group + model",
+      },
+      {
+        id: 10,
+        name: "Sidon / Saida River Mouth Plume",
+        severity: "Medium",
+        score: 73,
+        lat: 33.56,
+        lon: 35.38,
+        description: "River outflow carries urban litter into nearshore waters after rain.",
+        access: "Saida public beach near river mouth",
+        lastUpdated: "2025-11-09 15:20",
+        source: "Model after rainfall event",
+      },
+      {
+        id: 11,
+        name: "Jiyeh Power Plant Offshore Band",
+        severity: "Medium",
+        score: 68,
+        lat: 33.61,
+        lon: 35.48,
+        description: "Cooling water currents and industrial runoff can concentrate debris offshore.",
+        access: "Small boats from Jiyeh coast (careful, industrial area)",
+        lastUpdated: "2025-11-08 10:50",
+        source: "Local observations",
+      },
+      {
+        id: 12,
+        name: "Tyre Coast – South Current Line",
+        severity: "High",
+        score: 87,
+        lat: 33.235,
+        lon: 35.195,
+        description: "Seaweed + plastic accumulation driven by southward current.",
+        access: "Tyre Coast Nature Reserve – south entrance",
+        lastUpdated: "2025-11-10 16:40",
+        source: "Model prediction",
+      },
+      {
+        id: 13,
+        name: "Ras al-Naqoura Southern Eddy",
+        severity: "Low",
+        score: 52,
+        lat: 33.07,
+        lon: 35.34,
+        description: "Smaller accumulations near the border cape, often seasonal.",
+        access: "Shallow beaches near Naqoura",
+        lastUpdated: "2025-11-05 13:00",
+        source: "Volunteer check-ins",
+      },
+      {
+        id: 14,
+        name: "Offshore Mid-Lebanon Conveyor (Deep Drift)",
+        severity: "Medium",
+        score: 80,
+        lat: 33.75,
+        lon: 35.30,
+        description: "Deeper drift line where seabed topography and currents align to transport debris.",
+        access: "Requires larger vessel – open sea operations",
+        lastUpdated: "2025-11-14 07:45",
+        source: "Model-derived",
+      },
+      {
+        id: 15,
+        name: "Zahrani Estuary / Southern Plume",
+        severity: "High",
+        score: 90,
+        lat: 33.40,
+        lon: 35.20,
+        description: "Large seasonal plumes observed after heavy inland runoff and upstream discharges.",
+        access: "Zahrani coastal access points / local boat launch",
+        lastUpdated: "2025-11-13 18:30",
+        source: "Volunteers + river monitoring",
+      },
+    ];
+
+    // Local in-memory arrays (also mirrored to localStorage)
+    let cleanupEvents = [];
+    let reports = [];
+
+    // User state
+    let selectedHotspot = null;
+    let userLocation = null; // { lat, lon }
+
+    // Leaflet map
+    let map;
+    const hotspotMarkers = {};
+
+    // Sheet elements
+    const sheet = document.getElementById("bottom-sheet");
+    const sheetTitle = document.getElementById("sheet-title");
+    const sheetSubtitle = document.getElementById("sheet-subtitle");
+    const sheetBody = document.getElementById("sheet-body");
+
+    // --------- Language Switching ---------
+    
+    function setLanguage(lang) {
+      if (!translations[lang]) return;
+      currentLang = lang;
+      
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      
+      document.querySelectorAll('[data-translate-key]').forEach(el => {
+        const key = el.getAttribute('data-translate-key');
+        if (translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+      
+      // Update lang switch button text
+      const langSwitchBtn = document.getElementById('lang-switch-btn');
+      langSwitchBtn.textContent = translations[lang].langSwitch;
+
+      try {
+        localStorage.setItem('seaguard_lang', lang);
+      } catch (e) {
+        console.warn('Could not save language preference.', e);
+      }
+    }
+
+    // --------- Helpers ---------
+
+    function severityToColor(severity) {
+      switch (severity) {
+        case "High":
+          return "#e53935";
+        case "Medium":
+          return "#ffb300";
+        case "Low":
+        default:
+          return "#fdd835";
+      }
+    }
+
+    function severityToPillClass(severity) {
+      if (severity === "High") return "pill-high";
+      if (severity === "Medium") return "pill-med";
+      return "pill-low";
+    }
+
+    function formatScore(score) {
+      if (score === null || score === undefined) return "–";
+      return `${score}/100`;
+    }
+
+    function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371; // km
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function openSheet(title, subtitle, bodyHtml) {
+      sheetTitle.textContent = title || "";
+      sheetSubtitle.textContent = subtitle || "";
+      sheetBody.innerHTML = bodyHtml || "";
+      sheet.classList.add("open");
+    }
+
+    function closeSheet() {
+      sheet.classList.remove("open");
+      sheetTitle.textContent = "";
+      sheetSubtitle.textContent = "";
+      sheetBody.innerHTML = "";
+      selectedHotspot = null;
+    }
+
+    function saveToStorage() {
+      try {
+        localStorage.setItem("seaguard_cleanups", JSON.stringify(cleanupEvents));
+        localStorage.setItem("seaguard_reports", JSON.stringify(reports));
+      } catch (e) {
+        console.warn("Could not save to localStorage", e);
+      }
+    }
+
+    function loadFromStorage() {
+      try {
+        const c = localStorage.getItem("seaguard_cleanups");
+        const r = localStorage.getItem("seaguard_reports");
+        cleanupEvents = c ? JSON.parse(c) : [];
+        reports = r ? JSON.parse(r) : [];
+      } catch (e) {
+        console.warn("Could not load from localStorage", e);
+        cleanupEvents = [];
+        reports = [];
+      }
+    }
+
+    // --------- Map & Hotspots ---------
+
+    function initMap() {
+      map = L.map("map", {
+        zoomControl: false,
+      }).setView([33.9, 35.7], 8); // Center roughly on Lebanon
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      L.control
+        .zoom({
+          position: "bottomright",
+        })
+        .addTo(map);
+
+      // Add hotspots
+      hotspots.forEach((h) => {
+        const color = severityToColor(h.severity);
+        const marker = L.circleMarker([h.lat, h.lon], {
+          radius: 11,
+          color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.7,
+          pane: "overlayPane",
+        }).addTo(map);
+
+        marker.on("click", function () {
+          openHotspotDetails(h);
+        });
+
+        hotspotMarkers[h.id] = marker;
+      });
+
+      // Rough bounding box over Lebanon
+      const bounds = L.latLngBounds(
+        [33.0, 35.0], // southwest
+        [34.7, 36.6] // northeast
+      );
+      map.setMaxBounds(bounds.pad(0.2));
+    }
+
+    function openHotspotDetails(h) {
+      selectedHotspot = h;
+      const T = translations[currentLang];
+
+      let distanceInfo = "";
+      if (userLocation) {
+        const dist = haversineDistanceKm(
+          userLocation.lat,
+          userLocation.lon,
+          h.lat,
+          h.lon
+        );
+        const distRounded = dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km";
+        distanceInfo = `<span class="badge badge-outline">${T.distanceAway.replace('{distance}', distRounded)}</span>`;
+      }
+
+      const bodyHtml = `
+        <div class="hotspot-pill ${severityToPillClass(h.severity)}">
+          <span>${T.hotspotPillRisk}: ${h.severity}</span>
+        </div>
+        <div class="hotspot-pill pill-source">
+          <span>${T.hotspotPillScore}: ${formatScore(h.score)}</span>
+        </div>
+
+        <div class="info-row">
+          <div class="info-label">${T.infoLabelDescription}</div>
+          <div class="info-value">${h.description}</div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-label">${T.infoLabelCoordinates}</div>
+          <div class="info-value info-mono">
+            lat: ${h.lat.toFixed(5)}, lon: ${h.lon.toFixed(5)}
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-label">${T.infoLabelAccess}</div>
+          <div class="info-value">${h.access}</div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-label">${T.infoLabelUpdated}</div>
+          <div class="info-value">
+            ${h.lastUpdated} · <span class="info-mono">${h.source}</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-ghost" id="sheet-plan-cleanup" type="button">
+            <span class="icon">🧹</span>
+            ${T.btnPlanCleanupHere}
+          </button>
+          <button class="btn-ghost" id="sheet-report-trash" type="button">
+            <span class="icon">📷</span>
+            ${T.btnReportTrashHere}
+          </button>
+          ${distanceInfo}
+        </div>
+      `;
+
+      openSheet(h.name, T.hotspotSheetSubtitle, bodyHtml);
+
+      // Attach events after content is injected
+      document.getElementById("sheet-plan-cleanup")?.addEventListener("click", () => openCleanupForm(h));
+      document.getElementById("sheet-report-trash")?.addEventListener("click", () => openReportForm(h));
+
+      // Center/zoom map a bit closer on hotspot
+      map.flyTo([h.lat, h.lon], 13, { duration: 0.7 });
+    }
+
+    function openHotspotList() {
+      const sorted = [...hotspots].sort((a, b) => b.score - a.score);
+      const T = translations[currentLang];
+
+      let listHtml = '<div class="list">';
+      sorted.forEach((h) => {
+        let distanceText = "";
+        if (userLocation) {
+          const d = haversineDistanceKm(
+            userLocation.lat,
+            userLocation.lon,
+            h.lat,
+            h.lon
+          );
+          const dStr = d < 1 ? Math.round(d * 1000) + " m" : d.toFixed(1) + " km";
+          distanceText = ` · ${T.hotspotsListDistance.replace('{distance}', dStr)}`;
+        }
+        
+        const severityKey = `legend${h.severity}`;
+        const severityText = T[severityKey] || h.severity;
+
+
+        listHtml += `
+          <div class="list-item" data-hotspot-id="${h.id}">
+            <div class="list-item-header">
+              <div class="list-item-title">${h.name}</div>
+              <span class="badge">${severityText}</span>
+            </div>
+            <div class="list-item-meta">
+              ${T.hotspotPillScore}: ${formatScore(h.score)} · lat ${h.lat.toFixed(3)}, lon ${h.lon.toFixed(3)}${distanceText}
+            </div>
+          </div>
+        `;
+      });
+      listHtml += "</div>";
+
+      listHtml += `<div class="helper-text">${T.hotspotsHelperText}</div>`;
+
+      openSheet(T.hotspotsSheetTitle, T.hotspotsSheetSubtitle, listHtml);
+
+      document.querySelectorAll(".list-item[data-hotspot-id]").forEach((el) => {
+        el.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-hotspot-id"), 10);
+          const h = hotspots.find((x) => x.id === id);
+          if (h) {
+            openHotspotDetails(h);
+          }
+        });
+      });
+    }
+
+    // --------- Cleanup Flow ---------
+
+    function openCleanupForm(hotspotFromContext) {
+      const h = hotspotFromContext || hotspots[0];
+      selectedHotspot = h;
+      const T = translations[currentLang];
+
+      const bodyHtml = `
+        <div class="info-row">
+          <div class="info-label">${T.cleanupFormHotspotLabel}</div>
+          <div class="info-value">${h.name}</div>
+        </div>
+
+        <form id="cleanup-form">
+          <div>
+            <label for="cleanup-title">${T.cleanupFormTitleLabel}</label>
+            <div class="field">
+              <input id="cleanup-title" type="text" placeholder="${T.cleanupFormTitlePlaceholder}" required />
+            </div>
+          </div>
+
+          <div>
+            <label for="cleanup-datetime">${T.cleanupFormDateTimeLabel}</label>
+            <div class="field">
+              <input id="cleanup-datetime" type="datetime-local" required />
+            </div>
+          </div>
+
+          <div>
+            <label for="cleanup-meeting">${T.cleanupFormMeetingLabel}</label>
+            <div class="field">
+              <input id="cleanup-meeting" type="text" placeholder="${T.cleanupFormMeetingPlaceholder}" required />
+            </div>
+          </div>
+
+          <div>
+            <label for="cleanup-notes">${T.cleanupFormNotesLabel}</label>
+            <div class="field">
+              <textarea id="cleanup-notes" placeholder="${T.cleanupFormNotesPlaceholder}"></textarea>
+            </div>
+          </div>
+
+          <button class="btn-submit" type="submit">
+            <span class="icon">✅</span>
+            ${T.btnCreateCleanup}
+          </button>
+        </form>
+
+        <div class="helper-text">${T.cleanupFormHelper}</div>
+      `;
+
+      openSheet(T.cleanupFormTitle, T.cleanupFormSubtitle, bodyHtml);
+
+      document.getElementById("cleanup-form")?.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const event = {
+          id: Date.now(),
+          hotspotId: h.id,
+          hotspotName: h.name,
+          title: document.getElementById("cleanup-title").value.trim(),
+          datetime: document.getElementById("cleanup-datetime").value,
+          meetingPoint: document.getElementById("cleanup-meeting").value.trim(),
+          notes: document.getElementById("cleanup-notes").value.trim(),
+          createdAt: new Date().toISOString(),
+        };
+        cleanupEvents.push(event);
+        saveToStorage();
+        openCleanupList(true);
+      });
+    }
+
+    function openCleanupList(justCreated) {
+      const T = translations[currentLang];
+      if (cleanupEvents.length === 0) {
+        openSheet(T.cleanupListTitle, T.cleanupListSubtitle, `<div class="empty-state">${T.cleanupListEmpty}</div>`);
+        return;
+      }
+
+      const sorted = [...cleanupEvents].sort((a, b) => (a.datetime || "").localeCompare(b.datetime || ""));
+
+      let listHtml = '<div class="list">';
+      sorted.forEach((ev) => {
+        const h = hotspots.find((x) => x.id === ev.hotspotId);
+        const dt = ev.datetime ? ev.datetime.replace("T", " · ") : "Date TBD";
+        listHtml += `
+          <div class="list-item" data-cleanup-id="${ev.id}">
+            <div class="list-item-header">
+              <div class="list-item-title">${ev.title}</div>
+              <span class="badge badge-outline">${T.cleanupListItemBadge}</span>
+            </div>
+            <div class="list-item-meta">${dt} · ${ev.meetingPoint}</div>
+            <div class="list-item-meta">${h ? h.name : "Custom location"}</div>
+          </div>`;
+      });
+      listHtml += `</div><div class="helper-text">${T.cleanupListHelper}</div>`;
+
+      openSheet(
+        T.cleanupListTitle,
+        justCreated ? T.cleanupListSubtitleNew : T.cleanupListSubtitle,
+        listHtml
+      );
+
+      document.querySelectorAll(".list-item[data-cleanup-id]").forEach((el) => {
+        el.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-cleanup-id"), 10);
+          const ev = cleanupEvents.find((x) => x.id === id);
+          if (!ev) return;
+          const h = hotspots.find((x) => x.id === ev.hotspotId);
+          if (h) openHotspotDetails(h);
+        });
+      });
+    }
+
+    // --------- Report Trash Flow ---------
+
+    function openReportForm(hotspotFromContext) {
+      const h = hotspotFromContext || null;
+      selectedHotspot = h;
+      const T = translations[currentLang];
+
+      let hotspotInfo = h ? `<div class="info-row"><div class="info-label">${T.reportFormForHotspot}</div><div class="info-value">${h.name}</div></div>` : "";
+
+      const bodyHtml = `
+        ${hotspotInfo}
+        <form id="report-form">
+          <div>
+            <label for="report-type">${T.reportFormTypeLabel}</label>
+            <div class="field">
+              <select id="report-type" required>
+                <option value="">Choose type</option>
+                <option value="Plastic">${T.reportFormTypePlastic}</option>
+                <option value="Fishing gear">${T.reportFormTypeGear}</option>
+                <option value="Oil">${T.reportFormTypeOil}</option>
+                <option value="Mixed">${T.reportFormTypeMixed}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="report-severity">${T.reportFormSeverityLabel}</label>
+            <div class="field">
+              <select id="report-severity" required>
+                <option value="">Choose severity</option>
+                <option value="Low">${T.legendLow}</option>
+                <option value="Medium">${T.legendMedium}</option>
+                <option value="High">${T.legendHigh}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label>${T.reportFormLocationLabel}</label>
+            <div class="field">
+              <div class="helper-text">${T.reportFormLocationHelper}</div>
+              <input id="report-lat" type="text" placeholder="Latitude" value="${h ? h.lat.toFixed(5) : userLocation ? userLocation.lat.toFixed(5) : ""}" required />
+              <div style="height: 0.3rem;"></div>
+              <input id="report-lon" type="text" placeholder="Longitude" value="${h ? h.lon.toFixed(5) : userLocation ? userLocation.lon.toFixed(5) : ""}" required />
+            </div>
+          </div>
+          <div>
+            <label for="report-notes">${T.cleanupFormNotesLabel}</label>
+            <div class="field"><textarea id="report-notes"></textarea></div>
+          </div>
+          <button class="btn-submit" type="submit"><span class="icon">📤</span> ${T.btnSubmitReport}</button>
+        </form>
+        <div class="helper-text">${T.reportFormHelper}</div>
+      `;
+
+      openSheet(T.reportFormTitle, T.reportFormSubtitle, bodyHtml);
+
+      document.getElementById("report-form")?.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const lat = parseFloat(document.getElementById("report-lat").value.trim());
+        const lon = parseFloat(document.getElementById("report-lon").value.trim());
+        if (isNaN(lat) || isNaN(lon)) return alert("Invalid coordinates");
+
+        const report = {
+          id: Date.now(),
+          hotspotId: h ? h.id : null,
+          type: document.getElementById("report-type").value,
+          severity: document.getElementById("report-severity").value,
+          lat, lon,
+          notes: document.getElementById("report-notes").value.trim(),
+          createdAt: new Date().toISOString(),
+        };
+        reports.push(report);
+        saveToStorage();
+        openReportList(true);
+      });
+    }
+
+    function openReportList(justCreated) {
+        const T = translations[currentLang];
+      if (reports.length === 0) {
+        openSheet(T.reportListTitle, T.reportListSubtitle, `<div class="empty-state">${T.reportListEmpty}</div>`);
+        return;
+      }
+
+      const sorted = [...reports].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      let listHtml = '<div class="list">';
+      sorted.forEach((r) => {
+        const h = r.hotspotId ? hotspots.find((x) => x.id === r.hotspotId) : null;
+        const when = r.createdAt ? r.createdAt.replace("T", " · ").slice(0, 16) : "";
+        listHtml += `
+          <div class="list-item">
+            <div class="list-item-header">
+              <div class="list-item-title">${r.type} – ${r.severity}</div>
+              <span class="badge badge-outline">${T.reportListItemBadge}</span>
+            </div>
+            <div class="list-item-meta">${when} · lat ${r.lat.toFixed(3)}, lon ${r.lon.toFixed(3)}</div>
+            <div class="list-item-meta">${h ? h.name : "Free report"}</div>
+          </div>`;
+      });
+      listHtml += `</div><div class="helper-text">${T.reportListHelper}</div>`;
+
+      openSheet(T.reportListTitle, justCreated ? T.reportListSubtitleNew : T.reportListSubtitle, listHtml);
+    }
+    
+    // --------- OCR / Recycling Scanner ---------
+    function openRecycleScanner() {
+        const T = translations[currentLang];
+        const bodyHtml = `
+            <div class="info-row">
+              <div class="info-label">${T.scannerGuideTitle}</div>
+              <div class="info-value" style="font-size: 0.75rem;">${T.scannerGuideDesc}</div>
+            </div>
+            <div class="recycling-guide">
+              <div class="guide-section">
+                <h3 class="guide-title green">${T.scannerGuideRecyclableTitle}</h3>
+                <ul>${T.scannerGuideRecyclableItems}</ul>
+              </div>
+              <div class="guide-section">
+                <h3 class="guide-title red">${T.scannerGuideNonRecyclableTitle}</h3>
+                <ul>${T.scannerGuideNonRecyclableItems}</ul>
+              </div>
+            </div>
+            <div class="helper-text" style="margin-top: 0.5rem;">${T.scannerGuideDisclaimer}</div>
+            <hr style="margin: 1rem 0 0.8rem;">
+            <div class="info-row" style="margin-bottom: 0.2rem;">
+              <div class="info-label">${T.scannerDemoTitle}</div>
+              <div class="info-value" style="font-size: 0.75rem;">${T.scannerDemoDesc}</div>
+            </div>
+            <div id="ocr-demo-container">
+              <div id="ocr-uploader">
+                <input type="file" id="ocr-file-input" accept="image/*" style="display: none;">
+                <button id="ocr-upload-btn" class="btn-submit" type="button" style="width: 100%;">
+                  <span class="icon">📷</span> ${T.scannerDemoBtn}
+                </button>
+              </div>
+              <div id="ocr-result" style="display: none; position: relative; max-width: 400px; margin: 0.5rem auto;">
+                <img src="https://images.unsplash.com/photo-1618345100063-f090b348554a?q=80&w=1964&auto=format&fit=crop" style="width: 100%; border-radius: 12px; display: block;">
+                <div class="ocr-overlay green-overlay" style="position: absolute; left: 25%; top: 15%; width: 50%; height: 70%;"><span class="ocr-label">${T.scannerResultRecyclable}</span></div>
+                <div class="ocr-overlay red-overlay" style="position: absolute; left: 65%; top: 75%; width: 30%; height: 15%;"><span class="ocr-label">${T.scannerResultNotRecyclable}</span></div>
+              </div>
+            </div>
+        `;
+        openSheet(T.scannerTitle, T.scannerSubtitle, bodyHtml);
+        
+        const uploadBtn = document.getElementById("ocr-upload-btn");
+        const fileInput = document.getElementById("ocr-file-input");
+        const uploaderDiv = document.getElementById("ocr-uploader");
+        const resultDiv = document.getElementById("ocr-result");
+        if(uploadBtn && fileInput && uploaderDiv && resultDiv) {
+            uploadBtn.addEventListener("click", () => fileInput.click());
+            fileInput.addEventListener("change", (e) => {
+                if(e.target.files && e.target.files[0]) {
+                    uploaderDiv.style.display = "none";
+                    resultDiv.style.display = "block";
+                }
+            });
+        }
+    }
+
+    // --------- Profile ---------
+    function openProfile() {
+      const T = translations[currentLang];
+      const bodyHtml = `
+        <div class="profile-summary">
+          <div class="profile-chip"><div class="profile-chip-label">${T.profileCleanupsLabel}</div><div class="profile-chip-value">${cleanupEvents.length}</div></div>
+          <div class="profile-chip"><div class="profile-chip-label">${T.profileReportsLabel}</div><div class="profile-chip-value">${reports.length}</div></div>
+          <div class="profile-chip"><div class="profile-chip-label">${T.profileStatusLabel}</div><div class="profile-chip-value">${T.profileStatusValue}</div></div>
+        </div>
+        <div class="helper-text">${T.profileHelper}</div>
+        <div class="btn-row">
+          <button class="btn-ghost" id="profile-view-cleanups" type="button"><span class="icon">🧹</span> ${T.profileBtnViewCleanups}</button>
+          <button class="btn-ghost" id="profile-view-reports" type="button"><span class="icon">📷</span> ${T.profileBtnViewReports}</button>
+        </div>`;
+      openSheet(T.profileTitle, T.profileSubtitle, bodyHtml);
+      document.getElementById("profile-view-cleanups")?.addEventListener("click", () => openCleanupList(false));
+      document.getElementById("profile-view-reports")?.addEventListener("click", () => openReportList(false));
+    }
+
+    // --------- Location ---------
+    function requestUserLocation() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          L.circleMarker([userLocation.lat, userLocation.lon], { radius: 6, color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.9 })
+            .addTo(map).bindPopup("You are here (approx.)");
+          if (sheet.classList.contains("open") && sheetTitle.textContent === translations[currentLang].hotspotsSheetTitle) {
+            openHotspotList();
+          }
+        },
+        () => alert("Could not get location."),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+      );
+    }
+
+    // --------- Init & Events ---------
+    document.addEventListener("DOMContentLoaded", function () {
+      loadFromStorage();
+      initMap();
+
+      // Language setup
+      const savedLang = localStorage.getItem('seaguard_lang');
+      setLanguage(savedLang === 'ar' ? 'ar' : 'en');
+      
+      // Header buttons
+      document.getElementById("locate-btn").addEventListener("click", requestUserLocation);
+      document.getElementById("profile-btn").addEventListener("click", openProfile);
+      document.getElementById("lang-switch-btn").addEventListener("click", () => {
+        setLanguage(currentLang === 'en' ? 'ar' : 'en');
+      });
+
+      // Primary overlay buttons
+      document.getElementById("btn-hotspots").addEventListener("click", openHotspotList);
+      document.getElementById("btn-plan").addEventListener("click", () => openCleanupForm(hotspots[0]));
+      document.getElementById("btn-report").addEventListener("click", () => openReportForm(null));
+      document.getElementById("btn-scan").addEventListener("click", openRecycleScanner);
+
+      // Sheet close
+      document.getElementById("sheet-close").addEventListener("click", closeSheet);
+    });
+  </script>
+</body>
+</html>
