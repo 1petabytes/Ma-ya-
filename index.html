@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <meta charset="UTF-8" />
@@ -13,6 +12,7 @@
     crossorigin=""
   />
 
+  
   <style>
     :root {
       --primary: #0077b6;
@@ -165,15 +165,19 @@
       white-space: nowrap;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
 
-    .btn-secondary {
-      background: #ffffff;
-      color: var(--primary);
-      border: 1px solid rgba(148, 163, 184, 0.4);
+    /* Active state styling for top action buttons */
+    .btn-primary.active-top,
+    .btn-secondary.active-top {
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18),
+                  0 10px 25px rgba(15, 23, 42, 0.22);
+      transform: translateY(-1px);
+    }
+    /* Secondary buttons become filled when selected */
+    .btn-secondary.active-top {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: transparent;
     }
 
     .btn-primary span.icon,
@@ -709,6 +713,13 @@
           <div id="sheet-body" class="sheet-body"></div>
         </div>
       </div>
+
+      <!-- Location Section -->
+      <div id="location-section">
+        <h2>Location</h2>
+        <button onclick="getLocation()">Get My Location</button>
+        <p id="location-result"></p>
+      </div>
     </main>
   </div>
 
@@ -832,6 +843,12 @@
         profileHelper: "This is a simple offline profile. In a real app, you could sign in with a nickname, track how many cleanups you joined, and unlock badges for protecting Lebanon’s sea.",
         profileBtnViewCleanups: "View your cleanups",
         profileBtnViewReports: "View your reports",
+        // Sharing / Map picking
+        cleanupShareLabel: "Share",
+        shareNotSupported: "Sharing is not supported on this browser. The cleanup details were copied instead.",
+        shareCopied: "Cleanup details copied. You can paste them in WhatsApp, SMS, etc.",
+        btnPickOnMap: "Pick on map",
+        reportPickHint: "Tap anywhere on the map to fill in the coordinates for this report.",
       },
       ar: {
         // Header
@@ -870,7 +887,7 @@
         hotspotsSheetTitle: "أبرز النقاط الساخنة",
         hotspotsSheetSubtitle: "حيث من المرجح أن تتراكم القمامة",
         hotspotsListDistance: "على بعد ~{distance}",
-        hotspotsHelperText: "انقر على نقطة ساخنة لتوسيط الخريطة ورؤية التفاصيل الكاملة. هذه مجموعة بيانات وهمية - في الإنتاج، ستأتي النتائج من محرك توقعات القمامة + تقارير حقيقية.",
+        hotspotsHelperText: "انقر على نقطة ساخنة لتوسيع الخريطة ورؤية التفاصيل الكاملة. هذه مجموعة بيانات وهمية - في الإنتاج، ستأتي النتائج من محرك توقعات القمامة + تقارير حقيقية.",
         
         // Cleanup Form
         cleanupFormTitle: "تخطيط حملة تنظيف",
@@ -943,6 +960,12 @@
         profileHelper: "هذا ملف شخصي بسيط وغير متصل بالإنترنت. في تطبيق حقيقي، يمكنك تسجيل الدخول باسم مستعار، وتتبع عدد حملات التنظيف التي انضممت إليها، وفتح شارات لحماية بحر لبنان.",
         profileBtnViewCleanups: "عرض حملاتك",
         profileBtnViewReports: "عرض بلاغاتك",
+        // مشاركة / اختيار من الخريطة
+        cleanupShareLabel: "مشاركة",
+        shareNotSupported: "المشاركة غير مدعومة في هذا المتصفح. تم نسخ تفاصيل الحملة بدلًا من ذلك.",
+        shareCopied: "تم نسخ تفاصيل الحملة. يمكنك لصقها في واتساب أو الرسائل، إلخ.",
+        btnPickOnMap: "اختيار من الخريطة",
+        reportPickHint: "اضغط على أي مكان في الخريطة لاختيار إحداثيات هذا البلاغ.",
       },
     };
 
@@ -1144,6 +1167,104 @@
     let map;
     const hotspotMarkers = {};
 
+    // Report location picker state
+    const reportLocationPicker = {
+      active: false,
+      marker: null,
+      handler: null,
+    };
+    // Share cleanup helper
+    async function shareCleanupById(cleanupId) {
+      const T = translations[currentLang];
+      const ev = cleanupEvents.find((x) => x.id === cleanupId);
+      if (!ev) return;
+      const h = hotspots.find((x) => x.id === ev.hotspotId);
+      const dt = ev.datetime
+        ? new Date(ev.datetime).toLocaleString()
+        : new Date(ev.createdAt).toLocaleString();
+      const locationLabel = h ? h.name : "Custom location";
+      const text =
+        `SeaGuard Lebanon – Cleanup\n` +
+        `Title: ${ev.title}\n` +
+        `Hotspot: ${locationLabel}\n` +
+        `When: ${dt}\n` +
+        `Meeting point: ${ev.meetingPoint}\n` +
+        (ev.notes ? `Notes: ${ev.notes}\n` : "") +
+        `\nMap: (open SeaGuard and search for \"${locationLabel}\")`;
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: ev.title,
+            text,
+          });
+          return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          alert(T.shareCopied);
+        } else {
+          alert(`${T.shareNotSupported}\n\n${text}`);
+        }
+      } catch (err) {
+        console.warn("Share failed", err);
+      }
+    }
+
+    // Report location picker helpers
+    function startReportLocationPick() {
+      const T = translations[currentLang];
+      if (!map) return;
+      alert(T.reportPickHint);
+      if (reportLocationPicker.active && reportLocationPicker.handler) {
+        map.off("click", reportLocationPicker.handler);
+      }
+      reportLocationPicker.active = true;
+      reportLocationPicker.handler = function (e) {
+        const { lat, lng } = e.latlng;
+        const latInput = document.getElementById("report-lat");
+        const lonInput = document.getElementById("report-lon");
+        if (!latInput || !lonInput) return;
+        latInput.value = lat.toFixed(5);
+        lonInput.value = lng.toFixed(5);
+        if (reportLocationPicker.marker) {
+          reportLocationPicker.marker.setLatLng([lat, lng]);
+        } else {
+          reportLocationPicker.marker = L.circleMarker([lat, lng], {
+            radius: 7,
+            color: "#2563eb",
+            weight: 2,
+            fillColor: "#2563eb",
+            fillOpacity: 0.9,
+          }).addTo(map);
+        }
+        map.flyTo([lat, lng], 13, { duration: 0.4 });
+        if (reportLocationPicker.handler) {
+          map.off("click", reportLocationPicker.handler);
+        }
+        reportLocationPicker.active = false;
+        reportLocationPicker.handler = null;
+      };
+      map.on("click", reportLocationPicker.handler);
+    }
+    function cancelReportLocationPick() {
+      if (!reportLocationPicker.active || !map) return;
+      if (reportLocationPicker.handler) {
+        map.off("click", reportLocationPicker.handler);
+      }
+      reportLocationPicker.active = false;
+      reportLocationPicker.handler = null;
+    }
+
+    // Top action buttons helper
+    const topActionButtons = ["btn-hotspots", "btn-plan", "btn-report", "btn-scan"];
+    function setActiveTopAction(id) {
+      topActionButtons.forEach((btnId) => {
+        const el = document.getElementById(btnId);
+        if (!el) return;
+        el.classList.toggle("active-top", btnId === id);
+      });
+    }
+
     // Sheet elements
     const sheet = document.getElementById("bottom-sheet");
     const sheetTitle = document.getElementById("sheet-title");
@@ -1230,6 +1351,7 @@
       sheetSubtitle.textContent = "";
       sheetBody.innerHTML = "";
       selectedHotspot = null;
+      cancelReportLocationPick();
     }
 
     function saveToStorage() {
@@ -1509,7 +1631,17 @@
           <div class="list-item" data-cleanup-id="${ev.id}">
             <div class="list-item-header">
               <div class="list-item-title">${ev.title}</div>
-              <span class="badge badge-outline">${T.cleanupListItemBadge}</span>
+              <div style="display:flex; align-items:center; gap:0.35rem;">
+                <button
+                  class="btn-small cleanup-share-btn"
+                  data-cleanup-id="${ev.id}"
+                  type="button"
+                >
+                  <span class="icon">🔗</span>
+                  ${T.cleanupShareLabel}
+                </button>
+                <span class="badge badge-outline">${T.cleanupListItemBadge}</span>
+              </div>
             </div>
             <div class="list-item-meta">${dt} · ${ev.meetingPoint}</div>
             <div class="list-item-meta">${h ? h.name : "Custom location"}</div>
@@ -1524,12 +1656,22 @@
       );
 
       document.querySelectorAll(".list-item[data-cleanup-id]").forEach((el) => {
-        el.addEventListener("click", function () {
+        el.addEventListener("click", function (e) {
+          // Ignore clicks on the share button so the card doesn't open underneath
+          if (e.target.closest(".cleanup-share-btn")) return;
           const id = parseInt(this.getAttribute("data-cleanup-id"), 10);
           const ev = cleanupEvents.find((x) => x.id === id);
           if (!ev) return;
           const h = hotspots.find((x) => x.id === ev.hotspotId);
           if (h) openHotspotDetails(h);
+        });
+      });
+      // New: share buttons
+      document.querySelectorAll(".cleanup-share-btn").forEach((btn) => {
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          const id = parseInt(this.getAttribute("data-cleanup-id"), 10);
+          if (!isNaN(id)) shareCleanupById(id);
         });
       });
     }
@@ -1576,6 +1718,16 @@
               <input id="report-lat" type="text" placeholder="Latitude" value="${h ? h.lat.toFixed(5) : userLocation ? userLocation.lat.toFixed(5) : ""}" required />
               <div style="height: 0.3rem;"></div>
               <input id="report-lon" type="text" placeholder="Longitude" value="${h ? h.lon.toFixed(5) : userLocation ? userLocation.lon.toFixed(5) : ""}" required />
+              <div style="height: 0.45rem;"></div>
+              <button
+                id="report-pick-on-map"
+                type="button"
+                class="btn-ghost"
+                style="width: 100%; justify-content: center;"
+              >
+                <span class="icon">🗺️</span>
+                ${T.btnPickOnMap}
+              </button>
             </div>
           </div>
           <div>
@@ -1608,6 +1760,12 @@
         saveToStorage();
         openReportList(true);
       });
+      const pickBtn = document.getElementById("report-pick-on-map");
+      if (pickBtn) {
+        pickBtn.addEventListener("click", () => {
+          startReportLocationPick();
+        });
+      }
     }
 
     function openReportList(justCreated) {
@@ -1736,7 +1894,7 @@
       // Language setup
       const savedLang = localStorage.getItem('seaguard_lang');
       setLanguage(savedLang === 'ar' ? 'ar' : 'en');
-      
+
       // Header buttons
       document.getElementById("locate-btn").addEventListener("click", requestUserLocation);
       document.getElementById("profile-btn").addEventListener("click", openProfile);
@@ -1745,14 +1903,54 @@
       });
 
       // Primary overlay buttons
-      document.getElementById("btn-hotspots").addEventListener("click", openHotspotList);
-      document.getElementById("btn-plan").addEventListener("click", () => openCleanupForm(hotspots[0]));
-      document.getElementById("btn-report").addEventListener("click", () => openReportForm(null));
-      document.getElementById("btn-scan").addEventListener("click", openRecycleScanner);
+      document.getElementById("btn-hotspots").addEventListener("click", () => {
+        setActiveTopAction("btn-hotspots");
+        openHotspotList();
+      });
+      document.getElementById("btn-plan").addEventListener("click", () => {
+        setActiveTopAction("btn-plan");
+        openCleanupForm(hotspots[0]);
+      });
+      document.getElementById("btn-report").addEventListener("click", () => {
+        setActiveTopAction("btn-report");
+        openReportForm(null);
+      });
+      document.getElementById("btn-scan").addEventListener("click", () => {
+        setActiveTopAction("btn-scan");
+        openRecycleScanner();
+      });
 
       // Sheet close
       document.getElementById("sheet-close").addEventListener("click", closeSheet);
     });
+
+    // Location Section Script
+    function getLocation() {
+        var result = document.getElementById('location-result');
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                result.textContent =
+                    'Latitude: ' + position.coords.latitude + ', Longitude: ' + position.coords.longitude;
+            }, function(error) {
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        result.textContent = 'User denied the request for Geolocation.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        result.textContent = 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        result.textContent = 'The request to get user location timed out.';
+                        break;
+                    default:
+                        result.textContent = 'An unknown error occurred.';
+                        break;
+                }
+            });
+        } else {
+            result.textContent = 'Geolocation is not supported by this browser.';
+        }
+    }
   </script>
 </body>
 
